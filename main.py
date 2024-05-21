@@ -47,7 +47,6 @@ class TicTacToe:
 
         return play_pvp_button, play_ai_button
 
-
     def run(self):
         in_menu = True
         play_pvp_button, play_ai_button = self.draw_menu()  # Draw the menu and get button positions
@@ -70,7 +69,11 @@ class TicTacToe:
                         self.game.draw_board()  # Placeholder for drawing AI game board
 
                 elif not in_menu and event.type == pygame.MOUSEBUTTONDOWN:
-                    self.game.handle_click(event.pos)  # Handle clicks for placing moves
+                    action = self.game.handle_click(
+                        event.pos)  # Modified to handle clicks for placing moves and checking back button
+                    if action == 'back':  # If 'back' is returned from handle_click, it means the back button was pressed
+                        in_menu = True
+                        play_pvp_button, play_ai_button = self.draw_menu()  # Redraw the menu
 
             pygame.display.update()
             self.clock.tick(FPS)
