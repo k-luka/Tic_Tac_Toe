@@ -8,6 +8,7 @@ class Game:
         self.board = [[None for _ in range(3)] for _ in range(3)]
         self.current_player = 'X'
         self.game_over = False
+        self.is_ai_game = False
         self.board_size = min(WINDOW_WIDTH, WINDOW_HEIGHT) // 2  # Initialize board size
         self.reset_button = pygame.Rect(WINDOW_WIDTH // 2 + 25, WINDOW_HEIGHT // 2 + 250, 100, 40)
         self.back_button = pygame.Rect(WINDOW_WIDTH // 2 - 125, WINDOW_HEIGHT // 2 + 250, 100, 40)
@@ -67,8 +68,8 @@ class Game:
         if self.back_button.collidepoint(pos):
             self.reset_game()
             return 'back'  # Return 'back' to indicate the back button was pressed
-        if self.game_over:  # Skip handling clicks if the game is over
-            return
+        if self.game_over or (self.is_ai_game and self.current_player == 'O'):
+            return  # prevent user clicking if AI is making a move
         top_left_x = (WINDOW_WIDTH - self.board_size) // 2
         top_left_y = (WINDOW_HEIGHT - self.board_size) // 2
         cell_size = self.board_size // 3
@@ -80,18 +81,28 @@ class Game:
 
             if self.board[row][col] is None:  # Only allow to place if the cell is empty
                 self.board[row][col] = self.current_player
-                self.current_player = 'O' if self.current_player == 'X' else 'X'  # Switch turns
                 self.draw_move(row, col)
+                # check for game over before making AI move
+                if not self.check_game_over():
+                    self.current_player = 'O' if self.current_player == 'X' else 'X'
+                    if self.is_ai_game and self.current_player == 'O':
+                        pygame.time.wait(500)
+                        self.ai_move() # make AI move
 
+    def check_game_over(self):
         winner, winning_cells = self.check_win()
         if winner:
             self.game_over = True
             self.display_winner(winner)
-            if winning_cells:
-                self.draw_winning_line(winning_cells)
-        elif self.check_draw():
+            self.draw_winning_line(winning_cells)
+            return True
+        if self.check_draw():
             self.game_over = True
             self.display_draw()
+            return True
+        return False
+
+
 
     def display_winner(self, winner):
         message = f"Player {winner} won!"
@@ -155,16 +166,16 @@ class Game:
             start_x -= extension
             end_x += extension
         else:  # Diagonal line
-            if start_cell[0] < end_cell[0]:  # Descending diagonal
+            if start_cell[1] < end_cell[1]:  # Descending diagonal
+                start_x -= extension
+                start_y -= extension
+                end_x += extension
+                end_y += extension
+            else:  # Ascending diagonal
                 start_x += extension
                 start_y -= extension
                 end_x -= extension
                 end_y += extension
-            else:  # Ascending diagonal
-                start_x -= extension
-                start_y += extension
-                end_x += extension
-                end_y -= extension
 
         pygame.draw.line(self.screen, (255, 255, 0), (start_x, start_y), (end_x, end_y), 10)
         pygame.display.update()
@@ -191,4 +202,69 @@ class Game:
             pygame.draw.circle(self.screen, (0, 0, 255), (center_x, center_y), 20, 5)
 
         pygame.display.update()
+
+    # Ai using minimax
+    def ai_move(self):
+        best_score = -float('inf')
+        best_move = None
+        alpha = -float('inf')
+        beta = float('inf')
+
+        for i in range(3):
+            for j in range(3):
+                if self.board[i][j] is None:
+                    self.board[i][j] = 'O'
+                    score = self.minimax(self.board, False, alpha, beta)
+                    self.board[i][j] = None
+                    if score > best_score:
+                        best_score = score
+                        best_move = (i, j)
+                    alpha = max(alpha, score)
+                    if beta <= alpha:
+                        break
+
+        if best_move:
+            self.board[best_move[0]][best_move[1]] = 'O'
+            self.draw_move(best_move[0], best_move[1])
+            # Check if this move wins the game or results in a draw
+            if self.check_game_over():
+                self.game_over = True
+            else:
+                self.current_player = 'X'  # Switch back to user only if the game is not over
+
+    def minimax(self, board, is_maximizing, alpha, beta):
+        # base case
+        winner, winning_cells = self.check_win()
+        if winner is not None:
+            return {'X': -1, 'O': 1}[winner]
+        if self.check_draw():
+            return 0
+
+        if is_maximizing:
+            best_score = -float('inf')
+            for i in range(3):
+                for j in range(3):
+                    if board[i][j] is None:
+                        self.board[i][j] = 'O'
+                        score = self.minimax(self.board, False, alpha, beta)
+                        self.board[i][j] = None
+                        best_score = max(best_score, score)
+                        alpha = max(alpha, score)
+                        if beta <= alpha:
+                            break
+            return best_score
+
+        else:
+            best_score = float('inf')
+            for i in range(3):
+                for j in range(3):
+                    if board[i][j] is None:
+                        self.board[i][j] = 'X'
+                        score = self.minimax(self.board, True, alpha, beta)  # Change False to True
+                        board[i][j] = None
+                        best_score = min(best_score, score)
+                        beta = min(beta, score)  # Corrected from min(alpha, score)
+                        if beta <= alpha:
+                            break
+            return best_score
 

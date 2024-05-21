@@ -62,15 +62,16 @@ class TicTacToe:
                     if play_pvp_button.collidepoint(mouse_pos):
                         print('Player vs Player mode selected')
                         in_menu = False
+                        self.game.is_ai_game = False
                         self.game.draw_board()  # Draw the game board for PvP
                     elif play_ai_button.collidepoint(mouse_pos):
                         print('Player vs AI mode selected')
                         in_menu = False
-                        self.game.draw_board()  # Placeholder for drawing AI game board
+                        self.game.is_ai_game = True
+                        self.game.draw_board()
 
                 elif not in_menu and event.type == pygame.MOUSEBUTTONDOWN:
-                    action = self.game.handle_click(
-                        event.pos)  # Modified to handle clicks for placing moves and checking back button
+                    action = self.game.handle_click(event.pos)  # Modified to handle clicks for placing moves and checking back button
                     if action == 'back':  # If 'back' is returned from handle_click, it means the back button was pressed
                         in_menu = True
                         play_pvp_button, play_ai_button = self.draw_menu()  # Redraw the menu
